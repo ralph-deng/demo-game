@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import TextureKeys from '../consts/TextureKeys';
 import SceneKeys from '../consts/SceneKeys';
-import AnimationKeys from '../consts/AnimationKeys';
 import RocketMouse from '../game/RocketMouse';
 import LaserObstacle from '../game/LaserObstacle';
 
@@ -31,7 +30,7 @@ export default class Game extends Phaser.Scene {
   create() {
     const width = this.scale.width; 
     const height = this.scale.height; 
-    // this.add.image(0, 0, 'background').setOrigin(0, 0);
+    
     this.background = this.add.tileSprite(0, 0, width, height, TextureKeys.Background).setOrigin(0).setScrollFactor(0, 0);
     this.mouseHole = this.add.image(Phaser.Math.Between(500, 1500), 501, TextureKeys.MouseHole);
     this.window1 = this.add.image(Phaser.Math.Between(500, 1500), 200, TextureKeys.Window1);
@@ -40,7 +39,7 @@ export default class Game extends Phaser.Scene {
     this.bookcase1 = this.add.image(Phaser.Math.Between(2300, 2700), 580, TextureKeys.Bookcase1).setOrigin(0.5, 1);
     this.bookcase2 = this.add.image(Phaser.Math.Between(3000, 3500), 580, TextureKeys.Bookcase2).setOrigin(0.5, 1);
     this.bookcases = [this.bookcase1, this.bookcase2];
-    // const mouse = this.physics.add.sprite(width * 0.5, height - 30, TextureKeys.RocketMouse, 'rocketmouse_fly01.png').setOrigin(0.5, 1).play(AnimationKeys.RocketMouseRun);
+
     this.laserObstacle = new LaserObstacle(this, 900, 100);
     this.add.existing(this.laserObstacle);
 
@@ -49,11 +48,6 @@ export default class Game extends Phaser.Scene {
 
     this.mouse = new RocketMouse(this, width * 0.5, height - 30);
     this.add.existing(this.mouse);
-    // const body = mouse.body as Phaser.Physics.Arcade.Body;
-    // body.setCollideWorldBounds(true);
-    // body.setVelocityX(200);
-    // body.setSize(mouse.width, mouse.height);
-    // body.setOffset(mouse.width * -0.5, -mouse.height);
 
     this.physics.world.setBounds(0, 0, Number.MAX_SAFE_INTEGER, height - 30);
     this.cameras.main.startFollow(this.mouse);
@@ -88,6 +82,7 @@ export default class Game extends Phaser.Scene {
     this.wrapWindows();
     this.wrapBookcases();
     this.wrapLaserObtacle();
+    this.teleportBackwards();
   }
 
   private wrapMouseHole() {
@@ -133,8 +128,6 @@ export default class Game extends Phaser.Scene {
         return Math.abs(this.bookcase1.x - window.x) <= window.width;
       });
       this.bookcase1.visible = !overlap;
-
-      this.spawnCoins();
     }
 
     width = this.bookcase2.width;
@@ -200,5 +193,41 @@ export default class Game extends Phaser.Scene {
 
     this.score += 1;
     this.scoreLabel.text = `Score: ${this.score}`;
+  }
+
+  private teleportBackwards() {
+    const scrollX = this.cameras.main.scrollX;
+    const maxX = 2380;
+
+    if (scrollX > maxX) {
+      this.mouse.x -= maxX;
+      this.mouseHole.x -= maxX;
+
+      this.windows.forEach(win => {
+        win.x -= maxX;
+      });
+
+      this.bookcases.forEach(bc => {
+        bc.x -= maxX;
+      });
+
+      this.laserObstacle.x -= maxX;
+      const laserBody = this.laserObstacle.body as Phaser.Physics.Arcade.StaticBody;
+      laserBody.x -= maxX;
+
+      this.spawnCoins();
+
+      this.coins.children.each(child => {
+        const coin = child as Phaser.Physics.Arcade.Sprite;
+
+        if (!coin.active) {
+          return;
+        }
+
+        coin.x -= maxX;
+        const body = coin.body as Phaser.Physics.Arcade.StaticBody;
+        body.updateFromGameObject();
+      });
+    }
   }
 };
